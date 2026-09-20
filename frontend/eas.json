@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tripmate-production-1680.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://tripmate-production-d226.up.railway.app"
       }
     },
     "production": {
