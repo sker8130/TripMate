@@ -47,7 +47,11 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "bc4d8e20-d77b-4bf6-9f3b-416ef5b02c2e"
       }
-    }
+    },
+    "owner": "sker8130"
   }
 }
