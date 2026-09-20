@@ -202,6 +202,19 @@ function ExpensesTab({ tripId }: { tripId: string }) {
   const router = useRouter();
   const { getTrip, deleteExpense } = useApp();
   const trip = getTrip(tripId)!;
+  const getPayerName = (value: string) => {
+    const member = trip.members.find(
+      (m) =>
+        String(m.id) === value ||
+        String((m as Member & { _id?: string })._id) === value,
+    );
+
+    if (member) return member.name;
+
+    return /^[a-f0-9]{24}$/i.test(value || "")
+      ? "Không xác định người trả"
+      : value || "Chưa chọn người trả";
+  };
   const total = trip.expenses.reduce((sum: number, e: Expense) => sum + e.amount, 0);
   const perPerson = trip.members.length > 0 ? total / trip.members.length : 0;
   const byCategory: Record<string, number> = {};
@@ -241,7 +254,7 @@ function ExpensesTab({ tripId }: { tripId: string }) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.expName}>{item.name}</Text>
-              <Text style={s.expMeta}>{item.paidBy} · {item.splitType === 'equal' ? `Chia đều ${item.participants?.length || trip.members.length} người` : 'Chi tiết'}</Text>
+              <Text style={s.expMeta}>{getPayerName(item.paidBy)} · {item.splitType === 'equal' ? `Chia đều ${item.participants?.length || trip.members.length} người` : 'Chi tiết'}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={s.expAmt}>-{fmtMoney(item.amount)}</Text>
