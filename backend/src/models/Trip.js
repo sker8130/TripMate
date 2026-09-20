@@ -106,16 +106,21 @@ const tripSchema = new mongoose.Schema(
     // Owner
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Người tạo là bắt buộc'],
+      ref: "User",
+      required: [true, "Người tạo là bắt buộc"],
       index: true,
     },
 
     // Basic info
-    name:        { type: String, required: [true, 'Tên chuyến đi là bắt buộc'], trim: true, maxlength: 120 },
-    description: { type: String, default: '', maxlength: 2000 },
-    startDate:   { type: String },   // DD/MM/YYYY – kept as string for easy display
-    endDate:     { type: String },   // DD/MM/YYYY
+    name: {
+      type: String,
+      required: [true, "Tên chuyến đi là bắt buộc"],
+      trim: true,
+      maxlength: 120,
+    },
+    description: { type: String, default: "", maxlength: 2000 },
+    startDate: { type: String }, // DD/MM/YYYY – kept as string for easy display
+    endDate: { type: String }, // DD/MM/YYYY
 
     // Destinations
     destinations: [{ type: String, trim: true }],
@@ -123,8 +128,8 @@ const tripSchema = new mongoose.Schema(
     // Status (stored but also computed on read via virtual)
     status: {
       type: String,
-      enum: ['UPCOMING', 'ONGOING', 'DONE'],
-      default: 'UPCOMING',
+      enum: ["UPCOMING", "ONGOING", "DONE"],
+      default: "UPCOMING",
     },
 
     // Cover image
@@ -137,17 +142,23 @@ const tripSchema = new mongoose.Schema(
     deletedAt: { type: Date, default: null },
 
     // Nested documents
-    members:    [memberSchema],
+    members: [memberSchema],
     activities: [activitySchema],
-    checklist:  [checklistItemSchema],
-    expenses:   [expenseSchema],
+    checklist: [checklistItemSchema],
+    expenses: [expenseSchema],
   },
   {
     timestamps: true,
     toJSON: {
       virtuals: true,
       transform(doc, ret) {
-        ret.id = ret._id;
+        ret.id = String(ret._id);
+
+        ret.members = (ret.members || []).map((member) => ({
+          ...member,
+          id: String(member.id || member._id),
+        }));
+
         delete ret._id;
         delete ret.__v;
         delete ret.deletedAt;
@@ -155,7 +166,7 @@ const tripSchema = new mongoose.Schema(
       },
     },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 // ─── Virtuals ─────────────────────────────────────────────────────────────────
