@@ -2,24 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { useApp } from '../../context/AppContext';
-import { computeTripStatus, daysUntil } from '../../utils/helpers';
 
 function NotifBadge() {
-  const { trips } = useApp();
-  // Count urgent notifications
-  let count = 0;
-  trips.forEach(t => {
-    const status = computeTripStatus(t.startDate, t.endDate);
-    const days = daysUntil(t.startDate);
-    if (status === 'ONGOING') count++;
-    if (status === 'UPCOMING' && days <= 7 && days > 0) count++;
-    const pending = t.checklist?.filter(c => !c.completed).length || 0;
-    if (pending > 0 && status === 'UPCOMING' && days <= 3) count++;
-  });
-  if (count === 0) return null;
+  const { unreadCount } = useApp();
+
+  if (unreadCount === 0) return null;
+
   return (
     <View style={badgeStyles.dot}>
-      <Text style={badgeStyles.txt}>{count > 9 ? '9+' : count}</Text>
+      <Text style={badgeStyles.txt}>
+        {unreadCount > 9 ? "9+" : unreadCount}
+      </Text>
     </View>
   );
 }
