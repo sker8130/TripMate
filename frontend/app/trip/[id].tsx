@@ -153,6 +153,17 @@ function ChecklistTab({ tripId }: { tripId: string }) {
         ListEmptyComponent={<View style={s.emptyFull}><Ionicons name="checkbox-outline" size={40} color="#D1D5DB" /><Text style={s.emptyTitle}>Chưa có mục nào</Text></View>}
         renderItem={({ item }: { item: ChecklistItem }) => {
           const catColor = CAT_COLORS[item.category] || CAT_COLORS.shared;
+          const assignee = trip.members.find(
+            (m) =>
+              String(m.id || (m as Member & { _id?: string })._id) ===
+              item.assignee,
+          );
+
+          const assigneeName =
+            assignee?.name ||
+            (/^[a-f0-9]{24}$/i.test(item.assignee || "")
+              ? "Thành viên không có trong nhóm"
+              : item.assignee);
           return (
             <TouchableOpacity style={[s.clItem, item.completed && s.clItemDone]}
               onPress={() => router.push({ pathname: '/activity/[id]', params: { id: item.id, tripId, type: 'checklist' } })}
@@ -169,7 +180,7 @@ function ChecklistTab({ tripId }: { tripId: string }) {
               <View style={{ flex: 1 }}>
                 <Text style={[s.clName, item.completed && s.clNameDone]}>{item.name}</Text>
                 <View style={{ flexDirection: 'row', gap: 6, marginTop: 3, alignItems: 'center' }}>
-                  {item.assignee ? <Text style={s.clMetaText}>👤 {item.assignee}</Text> : null}
+                  {assigneeName ? ( <Text style={s.clMetaText}>👤 {assigneeName}</Text> ) : null}
                   {item.dueDate  ? <Text style={s.clMetaText}>📅 {item.dueDate}</Text>   : null}
                 </View>
               </View>
