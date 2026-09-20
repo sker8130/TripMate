@@ -31,6 +31,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   DONE:     { label: 'HOÀN THÀNH', color: '#10B981', bg: '#ECFDF5' },
 };
 
+function getChecklistItemId(item: ChecklistItem): string {
+  return String(item.id || (item as ChecklistItem & { _id?: string })._id || '');
+}
+
 function fmtMoney(n: number) { return Math.abs(n).toLocaleString('vi-VN') + ' đ'; }
 function formatDateInput(raw: string) {
   const d = raw.replace(/\D/g, '').slice(0, 8);
@@ -148,28 +152,39 @@ function ChecklistTab({ tripId }: { tripId: string }) {
         </ScrollView>
       </View>
       <FlatList
-        data={filtered} keyExtractor={c => c.id}
+        data={filtered} keyExtractor={getChecklistItemId}
         contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 100 }}
         ListEmptyComponent={<View style={s.emptyFull}><Ionicons name="checkbox-outline" size={40} color="#D1D5DB" /><Text style={s.emptyTitle}>Chưa có mục nào</Text></View>}
         renderItem={({ item }: { item: ChecklistItem }) => {
           const catColor = CAT_COLORS[item.category] || CAT_COLORS.shared;
+          const assignee = trip.members.find(
+            (m) =>
+              String(m.id || (m as Member & { _id?: string })._id) ===
+              item.assignee,
+          );
+
+          const assigneeName =
+            assignee?.name ||
+            (/^[a-f0-9]{24}$/i.test(item.assignee || "")
+              ? "Thành viên không có trong nhóm"
+              : item.assignee);
           return (
             <TouchableOpacity style={[s.clItem, item.completed && s.clItemDone]}
-              onPress={() => router.push({ pathname: '/activity/[id]', params: { id: item.id, tripId, type: 'checklist' } })}
+              onPress={() => router.push({ pathname: '/activity/[id]', params: { id: getChecklistItemId(item), tripId, type: 'checklist' } })}
               onLongPress={() => Alert.alert(item.name, '', [
-                { text: 'Sửa', onPress: () => router.push({ pathname: '/activity/[id]', params: { id: item.id, tripId, type: 'checklist' } }) },
-                { text: 'Xóa', style: 'destructive', onPress: () => deleteChecklistItem(tripId, item.id) },
+                { text: 'Sửa', onPress: () => router.push({ pathname: '/activity/[id]', params: { id: getChecklistItemId(item), tripId, type: 'checklist' } }) },
+                { text: 'Xóa', style: 'destructive', onPress: () => deleteChecklistItem(tripId, getChecklistItemId(item)) },
                 { text: 'Hủy', style: 'cancel' },
               ])}
             >
               <TouchableOpacity style={[s.clCheck, item.completed && s.clCheckDone]}
-                onPress={() => updateChecklistItem(tripId, item.id, { completed: !item.completed })}>
+                onPress={() => updateChecklistItem(tripId, getChecklistItemId(item), { completed: !item.completed })}>
                 {item.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <Text style={[s.clName, item.completed && s.clNameDone]}>{item.name}</Text>
                 <View style={{ flexDirection: 'row', gap: 6, marginTop: 3, alignItems: 'center' }}>
-                  {item.assignee ? <Text style={s.clMetaText}>👤 {item.assignee}</Text> : null}
+                  {assigneeName ? ( <Text style={s.clMetaText}>👤 {assigneeName}</Text> ) : null}
                   {item.dueDate  ? <Text style={s.clMetaText}>📅 {item.dueDate}</Text>   : null}
                 </View>
               </View>
@@ -191,6 +206,19 @@ function ExpensesTab({ tripId }: { tripId: string }) {
   const router = useRouter();
   const { getTrip, deleteExpense } = useApp();
   const trip = getTrip(tripId)!;
+  const getPayerName = (value: string) => {
+    const member = trip.members.find(
+      (m) =>
+        String(m.id) === value ||
+        String((m as Member & { _id?: string })._id) === value,
+    );
+
+    if (member) return member.name;
+
+    return /^[a-f0-9]{24}$/i.test(value || "")
+      ? "Không xác định người trả"
+      : value || "Chưa chọn người trả";
+  };
   const total = trip.expenses.reduce((sum: number, e: Expense) => sum + e.amount, 0);
   const perPerson = trip.members.length > 0 ? total / trip.members.length : 0;
   const byCategory: Record<string, number> = {};
@@ -230,7 +258,7 @@ function ExpensesTab({ tripId }: { tripId: string }) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.expName}>{item.name}</Text>
-              <Text style={s.expMeta}>{item.paidBy} · {item.splitType === 'equal' ? `Chia đều ${item.participants?.length || trip.members.length} người` : 'Chi tiết'}</Text>
+              <Text style={s.expMeta}>{getPayerName(item.paidBy)} · {item.splitType === 'equal' ? `Chia đều ${item.participants?.length || trip.members.length} người` : 'Chi tiết'}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={s.expAmt}>-{fmtMoney(item.amount)}</Text>

@@ -1,15 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, {createContext, useCallback, useContext, useEffect, useMemo, useState,} from 'react';
 import api, { clearToken, getToken, setToken } from '../services/api';
 import analytics from '../services/analytics';
 import { Activity, ChecklistItem, Expense, Member, Trip, User } from '../types';
-import { computeTripStatus, getTripImage, getInitials } from '../utils/helpers';
-import { logAction, logError, logInfo, logWarn, logDebug } from '../utils/logger';
+import {computeTripStatus, getTripImage, getInitials, daysUntil} from "../utils/helpers";import { logAction, logError, logInfo, logWarn, logDebug } from '../utils/logger';
 
 const TRIPS_CACHE_KEY = 'tripmate_trips_v2';
 const USER_CACHE_KEY  = 'tripmate_user_v2';
 
 function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+export type Notif = {
+  id: string;
+  tripId: string;
+  type: string;
+  title: string;
+  body: string;
+  time: string;
+  icon: any;
+  iconBg: string;
+  iconColor: string;
+  read: boolean;
+};
 
 // ─── Context interface ────────────────────────────────────────────────────────
 
@@ -18,33 +30,80 @@ interface AppContextType {
   trips: Trip[];
   loading: boolean;
   isOnline: boolean;
+  notifications: Notif[];
+  readIds: Set<string>;
+  unreadCount: number;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
   signIn: (emailOrPhone: string, password: string) => Promise<boolean>;
-  signUp:  (email: string, username: string, phone: string, password: string) => Promise<boolean>;
+  signUp: (
+    email: string,
+    username: string,
+    phone: string,
+    password: string,
+  ) => Promise<boolean>;
   signOut: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
   changePassword: (
-  current: string,
-  newPwd: string
-) => Promise<{
-  success: boolean;
-  message: string;
-}>;
+    current: string,
+    newPwd: string,
+  ) => Promise<{
+    success: boolean;
+    message: string;
+  }>;
   deleteAccount: () => Promise<boolean>;
   refreshTrips: () => Promise<void>;
   getTrip: (id: string) => Trip | undefined;
-  createTrip: (data: { name: string; startDate: string; endDate: string; description: string; destinations: string[]; memberPhones: string[] }) => Promise<Trip>;
+  createTrip: (data: {
+    name: string;
+    startDate: string;
+    endDate: string;
+    description: string;
+    destinations: string[];
+    memberPhones: string[];
+  }) => Promise<Trip>;
   deleteTrip: (id: string) => Promise<void>;
   joinTrip: (inviteCode: string) => Promise<Trip | null>;
   findUser: (query: string) => Promise<any | null>;
-  updateTrip: (id: string, data: Partial<{ name: string; startDate: string; endDate: string; description: string; destinations: string[] }>) => Promise<void>;
-  addActivity: (tripId: string, data: Omit<Activity, 'id' | 'tripId'>) => Promise<void>;
-  updateActivity: (tripId: string, actId: string, data: Partial<Activity>) => Promise<void>;
+  updateTrip: (
+    id: string,
+    data: Partial<{
+      name: string;
+      startDate: string;
+      endDate: string;
+      description: string;
+      destinations: string[];
+    }>,
+  ) => Promise<void>;
+  addActivity: (
+    tripId: string,
+    data: Omit<Activity, "id" | "tripId">,
+  ) => Promise<void>;
+  updateActivity: (
+    tripId: string,
+    actId: string,
+    data: Partial<Activity>,
+  ) => Promise<void>;
   deleteActivity: (tripId: string, actId: string) => Promise<void>;
-  addChecklistItem: (tripId: string, data: Omit<ChecklistItem, 'id' | 'tripId'>) => Promise<void>;
-  updateChecklistItem: (tripId: string, itemId: string, data: Partial<ChecklistItem>) => Promise<void>;
+  addChecklistItem: (
+    tripId: string,
+    data: Omit<ChecklistItem, "id" | "tripId">,
+  ) => Promise<void>;
+  updateChecklistItem: (
+    tripId: string,
+    itemId: string,
+    data: Partial<ChecklistItem>,
+  ) => Promise<void>;
   deleteChecklistItem: (tripId: string, itemId: string) => Promise<void>;
-  addExpense: (tripId: string, data: Omit<Expense, 'id' | 'tripId'>) => Promise<void>;
-  updateExpense: (tripId: string, expId: string, data: Partial<Expense>) => Promise<void>;
+  addExpense: (
+    tripId: string,
+    data: Omit<Expense, "id" | "tripId">,
+  ) => Promise<void>;
+  updateExpense: (
+    tripId: string,
+    expId: string,
+    data: Partial<Expense>,
+  ) => Promise<void>;
   deleteExpense: (tripId: string, expId: string) => Promise<void>;
   addMember: (tripId: string, phone: string) => Promise<boolean>;
   removeMember: (tripId: string, memberId: string) => Promise<void>;
@@ -104,7 +163,100 @@ const MOCK_TRIPS: Trip[] = [
     const [trips, setTrips]     = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
     const [isOnline, setIsOnline] = useState(false);
+    const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
 
+    // Reset read status when the account changes.
+    useEffect(() => {
+      setReadIds(new Set());
+    }, [user?.id]);
+
+    const notifications: Notif[] = useMemo(() => {
+        const list: Notif[] = [];
+        trips.forEach(trip => {
+          const status = computeTripStatus(trip.startDate, trip.endDate);
+          const days   = daysUntil(trip.startDate);
+    
+          if (status === 'ONGOING') {
+            list.push({
+              id: `ongoing-${trip.id}`, tripId: trip.id, type: 'ongoing',
+              title: `Chuyến đi đang diễn ra`,
+              body: `"${trip.name}" đang trong hành trình. Chúc bạn có chuyến đi vui vẻ!`,
+              time: 'Hôm nay',
+              icon: 'airplane', iconBg: '#EFF6FF', iconColor: '#3B82F6', read: false,
+            });
+          }
+          if (status === 'UPCOMING' && days > 0 && days <= 7) {
+            list.push({
+              id: `upcoming-${trip.id}`, tripId: trip.id, type: 'reminder',
+              title: `Còn ${days} ngày nữa khởi hành!`,
+              body: `"${trip.name}" sẽ bắt đầu vào ${trip.startDate}. Hãy kiểm tra checklist của bạn.`,
+              time: days <= 1 ? 'Hôm nay' : `${days} ngày trước`,
+              icon: 'time', iconBg: '#FEF3C7', iconColor: '#F59E0B', read: false,
+            });
+          }
+          if (status === 'DONE') {
+            list.push({
+              id: `done-${trip.id}`, tripId: trip.id, type: 'done',
+              title: `Chuyến đi hoàn thành`,
+              body: `"${trip.name}" đã kết thúc. Hãy xem tổng kết chi phí!`,
+              time: trip.endDate,
+              icon: 'checkmark-circle', iconBg: '#ECFDF5', iconColor: '#10B981', read: false,
+            });
+          }
+          const pending = trip.checklist.filter(c => !c.completed).length;
+          if (pending > 0 && status === 'UPCOMING' && days <= 3 && days >= 0) {
+            list.push({
+              id: `checklist-${trip.id}`, tripId: trip.id, type: 'checklist',
+              title: `Còn ${pending} mục chưa hoàn thành`,
+              body: `Checklist của "${trip.name}" vẫn còn ${pending} việc cần làm trước khi đi.`,
+              time: 'Vừa xong',
+              icon: 'checkbox-outline', iconBg: '#F3E8FF', iconColor: '#8B5CF6', read: false,
+            });
+          }
+          const total = trip.expenses.reduce((s, e) => s + e.amount, 0);
+          if (total > 0 && status === 'DONE') {
+            list.push({
+              id: `expense-${trip.id}`, tripId: trip.id, type: 'expense',
+              title: `Tổng kết chi phí`,
+              body: `Chuyến "${trip.name}" tốn ${total.toLocaleString('vi-VN')} đ — ${trip.members.length} người tham gia.`,
+              time: trip.endDate,
+              icon: 'wallet', iconBg: '#FEE2E2', iconColor: '#EF4444', read: false,
+            });
+          }
+        });
+    
+        if (list.length === 0) {
+          list.push({
+            id: 'welcome', tripId: '', type: 'welcome',
+            title: 'Chào mừng đến với TripMate! 🎉',
+            body: 'Tạo chuyến đi đầu tiên của bạn và bắt đầu lên kế hoạch cùng bạn bè.',
+            time: 'Hôm nay',
+            icon: 'sparkles', iconBg: '#EFF6FF', iconColor: '#1B4F8A', read: false,
+          });
+        }
+        return list;
+      }, [trips]);
+
+    const unreadCount = notifications.filter(
+      (notification) => !readIds.has(notification.id),
+    ).length;
+
+    const markNotificationRead = (id: string) => {
+      setReadIds((previous) => {
+        if (previous.has(id)) return previous;
+        return new Set([...previous, id]);
+      });
+    };
+
+    const markAllNotificationsRead = () => {
+      setReadIds(
+        (previous) =>
+          new Set([
+            ...previous,
+            ...notifications.map((notification) => notification.id),
+          ]),
+      );
+    };
     // ── Bootstrap ────────────────────────────────────────────────────────────────
 
     useEffect(() => { bootstrap(); }, []);
@@ -674,6 +826,10 @@ const deleteAccount = async (): Promise<boolean> => {
   };
 
   const updateChecklistItem = async (tripId: string, itemId: string, data: Partial<ChecklistItem>) => {
+    if (!tripId || !itemId) {
+      logWarn('Checklist', 'updateChecklistItem: tripId and itemId are required', { tripId, itemId });
+      return;
+    }
     updateLocalTrip(tripId, t => ({ ...t, checklist: t.checklist.map(c => c.id === itemId ? { ...c, ...data } : c) }));
     if (isOnline) {
       try { await api.checklist.update(tripId, itemId, data); }
@@ -682,6 +838,10 @@ const deleteAccount = async (): Promise<boolean> => {
   };
 
   const deleteChecklistItem = async (tripId: string, itemId: string) => {
+    if (!tripId || !itemId) {
+      logWarn('Checklist', 'deleteChecklistItem: tripId and itemId are required', { tripId, itemId });
+      return;
+    }
     updateLocalTrip(tripId, t => ({ ...t, checklist: t.checklist.filter(c => c.id !== itemId) }));
     if (isOnline) {
       try { await api.checklist.delete(tripId, itemId); }
@@ -811,7 +971,15 @@ const deleteAccount = async (): Promise<boolean> => {
   return (
     <AppContext.Provider value={{
       user, trips, loading, isOnline,
-      signIn, signUp, signOut, deleteAccount, updateUser, changePassword, refreshTrips,
+
+      notifications,
+      readIds,
+      unreadCount,
+      markNotificationRead,
+      markAllNotificationsRead,
+
+      signIn, signUp, signOut, deleteAccount,
+      updateUser, changePassword, refreshTrips,
       getTrip, createTrip, deleteTrip, joinTrip,
       findUser, updateTrip,
       addActivity, updateActivity, deleteActivity,

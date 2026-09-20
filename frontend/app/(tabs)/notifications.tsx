@@ -1,101 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import {
   FlatList, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { computeTripStatus, daysUntil } from '../../utils/helpers';
-
-type Notif = {
-  id: string; tripId: string; type: string;
-  title: string; body: string; time: string;
-  icon: any; iconBg: string; iconColor: string; read: boolean;
-};
+import type { Notif } from "../../context/AppContext";
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { trips } = useApp();
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
-
-  const notifications: Notif[] = useMemo(() => {
-    const list: Notif[] = [];
-    trips.forEach(trip => {
-      const status = computeTripStatus(trip.startDate, trip.endDate);
-      const days   = daysUntil(trip.startDate);
-
-      if (status === 'ONGOING') {
-        list.push({
-          id: `ongoing-${trip.id}`, tripId: trip.id, type: 'ongoing',
-          title: `Chuyến đi đang diễn ra`,
-          body: `"${trip.name}" đang trong hành trình. Chúc bạn có chuyến đi vui vẻ!`,
-          time: 'Hôm nay',
-          icon: 'airplane', iconBg: '#EFF6FF', iconColor: '#3B82F6', read: false,
-        });
-      }
-      if (status === 'UPCOMING' && days > 0 && days <= 7) {
-        list.push({
-          id: `upcoming-${trip.id}`, tripId: trip.id, type: 'reminder',
-          title: `Còn ${days} ngày nữa khởi hành!`,
-          body: `"${trip.name}" sẽ bắt đầu vào ${trip.startDate}. Hãy kiểm tra checklist của bạn.`,
-          time: days <= 1 ? 'Hôm nay' : `${days} ngày trước`,
-          icon: 'time', iconBg: '#FEF3C7', iconColor: '#F59E0B', read: false,
-        });
-      }
-      if (status === 'DONE') {
-        list.push({
-          id: `done-${trip.id}`, tripId: trip.id, type: 'done',
-          title: `Chuyến đi hoàn thành`,
-          body: `"${trip.name}" đã kết thúc. Hãy xem tổng kết chi phí!`,
-          time: trip.endDate,
-          icon: 'checkmark-circle', iconBg: '#ECFDF5', iconColor: '#10B981', read: false,
-        });
-      }
-      const pending = trip.checklist.filter(c => !c.completed).length;
-      if (pending > 0 && status === 'UPCOMING' && days <= 3 && days >= 0) {
-        list.push({
-          id: `checklist-${trip.id}`, tripId: trip.id, type: 'checklist',
-          title: `Còn ${pending} mục chưa hoàn thành`,
-          body: `Checklist của "${trip.name}" vẫn còn ${pending} việc cần làm trước khi đi.`,
-          time: 'Vừa xong',
-          icon: 'checkbox-outline', iconBg: '#F3E8FF', iconColor: '#8B5CF6', read: false,
-        });
-      }
-      const total = trip.expenses.reduce((s, e) => s + e.amount, 0);
-      if (total > 0 && status === 'DONE') {
-        list.push({
-          id: `expense-${trip.id}`, tripId: trip.id, type: 'expense',
-          title: `Tổng kết chi phí`,
-          body: `Chuyến "${trip.name}" tốn ${total.toLocaleString('vi-VN')} đ — ${trip.members.length} người tham gia.`,
-          time: trip.endDate,
-          icon: 'wallet', iconBg: '#FEE2E2', iconColor: '#EF4444', read: false,
-        });
-      }
-    });
-
-    if (list.length === 0) {
-      list.push({
-        id: 'welcome', tripId: '', type: 'welcome',
-        title: 'Chào mừng đến với TripMate! 🎉',
-        body: 'Tạo chuyến đi đầu tiên của bạn và bắt đầu lên kế hoạch cùng bạn bè.',
-        time: 'Hôm nay',
-        icon: 'sparkles', iconBg: '#EFF6FF', iconColor: '#1B4F8A', read: false,
-      });
-    }
-    return list;
-  }, [trips]);
-
-  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
-
-  const markAllRead = () => setReadIds(new Set(notifications.map(n => n.id)));
+  const {
+    notifications,
+    readIds,
+    unreadCount,
+    markNotificationRead,
+    markAllNotificationsRead,
+  } = useApp();
 
   const handlePress = (n: Notif) => {
-    setReadIds(prev => new Set([...prev, n.id]));
+    markNotificationRead(n.id);
+
     if (n.tripId) {
-      if (n.type === 'expense' || n.type === 'done') {
-        router.push({ pathname: '/trip/report', params: { tripId: n.tripId } });
+      if (n.type === "expense" || n.type === "done") {
+        router.push({
+          pathname: "/trip/report",
+          params: { tripId: n.tripId },
+        });
       } else {
         router.push(`/trip/${n.tripId}`);
       }
@@ -107,7 +39,7 @@ export default function NotificationsScreen() {
       <View style={s.header}>
         <Text style={s.title}>Thông báo</Text>
         {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllRead} style={s.markAllBtn}>
+          <TouchableOpacity onPress={markAllNotificationsRead} style={s.markAllBtn}>
             <Text style={s.markAllText}>Đọc tất cả</Text>
           </TouchableOpacity>
         )}
