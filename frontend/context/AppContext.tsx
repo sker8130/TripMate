@@ -826,6 +826,10 @@ const deleteAccount = async (): Promise<boolean> => {
   };
 
   const updateChecklistItem = async (tripId: string, itemId: string, data: Partial<ChecklistItem>) => {
+    if (!tripId || !itemId) {
+      logWarn('Checklist', 'updateChecklistItem: tripId and itemId are required', { tripId, itemId });
+      return;
+    }
     updateLocalTrip(tripId, t => ({ ...t, checklist: t.checklist.map(c => c.id === itemId ? { ...c, ...data } : c) }));
     if (isOnline) {
       try { await api.checklist.update(tripId, itemId, data); }
@@ -834,6 +838,10 @@ const deleteAccount = async (): Promise<boolean> => {
   };
 
   const deleteChecklistItem = async (tripId: string, itemId: string) => {
+    if (!tripId || !itemId) {
+      logWarn('Checklist', 'deleteChecklistItem: tripId and itemId are required', { tripId, itemId });
+      return;
+    }
     updateLocalTrip(tripId, t => ({ ...t, checklist: t.checklist.filter(c => c.id !== itemId) }));
     if (isOnline) {
       try { await api.checklist.delete(tripId, itemId); }

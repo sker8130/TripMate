@@ -31,6 +31,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   DONE:     { label: 'HOÀN THÀNH', color: '#10B981', bg: '#ECFDF5' },
 };
 
+function getChecklistItemId(item: ChecklistItem): string {
+  return String(item.id || (item as ChecklistItem & { _id?: string })._id || '');
+}
+
 function fmtMoney(n: number) { return Math.abs(n).toLocaleString('vi-VN') + ' đ'; }
 function formatDateInput(raw: string) {
   const d = raw.replace(/\D/g, '').slice(0, 8);
@@ -148,7 +152,7 @@ function ChecklistTab({ tripId }: { tripId: string }) {
         </ScrollView>
       </View>
       <FlatList
-        data={filtered} keyExtractor={c => c.id}
+        data={filtered} keyExtractor={getChecklistItemId}
         contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 100 }}
         ListEmptyComponent={<View style={s.emptyFull}><Ionicons name="checkbox-outline" size={40} color="#D1D5DB" /><Text style={s.emptyTitle}>Chưa có mục nào</Text></View>}
         renderItem={({ item }: { item: ChecklistItem }) => {
@@ -166,15 +170,15 @@ function ChecklistTab({ tripId }: { tripId: string }) {
               : item.assignee);
           return (
             <TouchableOpacity style={[s.clItem, item.completed && s.clItemDone]}
-              onPress={() => router.push({ pathname: '/activity/[id]', params: { id: item.id, tripId, type: 'checklist' } })}
+              onPress={() => router.push({ pathname: '/activity/[id]', params: { id: getChecklistItemId(item), tripId, type: 'checklist' } })}
               onLongPress={() => Alert.alert(item.name, '', [
-                { text: 'Sửa', onPress: () => router.push({ pathname: '/activity/[id]', params: { id: item.id, tripId, type: 'checklist' } }) },
-                { text: 'Xóa', style: 'destructive', onPress: () => deleteChecklistItem(tripId, item.id) },
+                { text: 'Sửa', onPress: () => router.push({ pathname: '/activity/[id]', params: { id: getChecklistItemId(item), tripId, type: 'checklist' } }) },
+                { text: 'Xóa', style: 'destructive', onPress: () => deleteChecklistItem(tripId, getChecklistItemId(item)) },
                 { text: 'Hủy', style: 'cancel' },
               ])}
             >
               <TouchableOpacity style={[s.clCheck, item.completed && s.clCheckDone]}
-                onPress={() => updateChecklistItem(tripId, item.id, { completed: !item.completed })}>
+                onPress={() => updateChecklistItem(tripId, getChecklistItemId(item), { completed: !item.completed })}>
                 {item.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
               </TouchableOpacity>
               <View style={{ flex: 1 }}>

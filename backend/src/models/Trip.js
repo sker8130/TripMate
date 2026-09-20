@@ -159,6 +159,21 @@ const tripSchema = new mongoose.Schema(
           id: String(member.id || member._id),
         }));
 
+        ret.activities = (ret.activities || []).map((activity) => ({
+          ...activity,
+          id: String(activity.id || activity._id),
+        }));
+
+        ret.checklist = (ret.checklist || []).map((item) => ({
+          ...item,
+          id: String(item.id || item._id),
+        }));
+
+        ret.expenses = (ret.expenses || []).map((expense) => ({
+          ...expense,
+          id: String(expense.id || expense._id),
+        }));
+
         delete ret._id;
         delete ret.__v;
         delete ret.deletedAt;
