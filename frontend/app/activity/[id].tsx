@@ -209,8 +209,8 @@ function MemberPicker({
 
 function ActivityForm({ tripId, actId }: { tripId: string; actId: string }) {
   const safeBack = useSafeBack(`/trip/${tripId}`);
-  const { getTrip, addActivity, updateActivity, deleteActivity } = useApp();
-  const trip = getTrip(tripId);
+  const { trips, addActivity, updateActivity, deleteActivity } = useApp();
+  const trip = trips.find((t) => t.id === tripId);
   const isNew = !actId || actId === 'new' || actId === 'activity';
   const existing = isNew ? undefined : trip?.activities.find((a) => safeGetId(a) === actId);
 
