@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import {
-  ActivityIndicator, Dimensions, KeyboardAvoidingView,
+  ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView,
   Linking, Modal, Platform, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -358,6 +359,7 @@ export default function CreateTripScreen() {
   const [showMembers, setShowMembers] = useState(false);
 
   const [basic, setBasic] = useState({ name:'', startDate:'', endDate:'', description:'' });
+  const [coverImage, setCoverImage] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<{name:string;address:string}[]>([]);
   const [destInput, setDestInput]       = useState('');
   const [members, setMembers]           = useState<{phone:string;name?:string}[]>([]);
@@ -380,6 +382,24 @@ export default function CreateTripScreen() {
 
   const removeDest = (name: string) => setDestinations(prev => prev.filter(d => d.name !== name));
 
+  const pickCoverImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Cần cấp quyền truy cập thư viện ảnh để chọn ảnh bìa cho chuyến đi.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+    setCoverImage(result.assets[0].uri);
+  };
+
   const handleNext = async () => {
     if (step === 1) {
       if (!basic.name.trim()) { alert('Vui lòng nhập tên chuyến đi'); return; }
@@ -399,6 +419,7 @@ export default function CreateTripScreen() {
     try {
       const trip = await createTrip({
         ...basic,
+        image: coverImage || undefined,
         destinations: destinations.map(d => d.name),
         memberPhones: skipMembers ? [] : members.map(m => m.phone),
       });
@@ -459,6 +480,21 @@ export default function CreateTripScreen() {
               <TextInput style={[st.input,{height:80,textAlignVertical:'top'}]} multiline numberOfLines={3}
                 placeholder="Chuyến hè cùng những người bạn thân..." placeholderTextColor="#C0C8D0"
                 value={basic.description} onChangeText={v=>setBasic(p=>({...p,description:v}))} />
+
+              <Text style={st.label}>Ảnh bìa</Text>
+              <TouchableOpacity style={st.coverUploadBtn} onPress={pickCoverImage}>
+                {coverImage ? (
+                  <Image source={{ uri: coverImage }} style={st.coverImagePreview} resizeMode="cover" />
+                ) : (
+                  <View style={st.coverPlaceholder}>
+                    <View style={st.coverIconWrap}>
+                      <Ionicons name="camera" size={20} color="#1B4F8A" />
+                    </View>
+                    <Text style={st.coverTitle}>Thêm ảnh bìa</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <Text style={st.coverHint}>Hãy update ảnh có tỉ lệ ngang khoảng 16:9.</Text>
             </View>
           )}
 
@@ -671,6 +707,12 @@ const st = StyleSheet.create({
   label: {fontSize:14,fontWeight:'600',color:'#374151'},
   subLabel: {fontSize:13,fontWeight:'600',color:'#6B7280'},
   input: {borderWidth:1.5,borderColor:'#E5E7EB',borderRadius:12,paddingHorizontal:14,paddingVertical:13,fontSize:15,color:'#111',backgroundColor:'#F9FAFB'},
+  coverUploadBtn: {borderWidth:1.5,borderColor:'#D1D5DB',borderRadius:16,overflow:'hidden',backgroundColor:'#F9FAFB'},
+  coverPlaceholder: {height:180,justifyContent:'center',alignItems:'center',backgroundColor:'#F4F7FB',gap:8},
+  coverIconWrap: {width:52,height:52,borderRadius:26,backgroundColor:'#E0ECFF',justifyContent:'center',alignItems:'center'},
+  coverTitle: {fontSize:15,fontWeight:'700',color:'#1B4F8A'},
+  coverHint: {fontSize:12,color:'#6B7280',marginTop:-4},
+  coverImagePreview: {width:'100%',height:180},
   dateWrap: {flexDirection:'row',alignItems:'center',gap:8,borderWidth:1.5,borderColor:'#E5E7EB',borderRadius:12,paddingHorizontal:12,paddingVertical:12,backgroundColor:'#F9FAFB'},
   mapsBtn: {flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#F0F9FF',borderRadius:14,padding:14,borderWidth:1.5,borderColor:'#BFDBFE'},
   mapsBtnIcon: {width:44,height:44,borderRadius:22,backgroundColor:'#1B4F8A',justifyContent:'center',alignItems:'center'},

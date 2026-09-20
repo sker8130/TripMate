@@ -93,7 +93,7 @@ exports.getTripById = async (req, res) => {
 
 exports.createTrip = async (req, res) => {
   try {
-    const { name, startDate, endDate, description, destinations, memberPhones } = req.body;
+    const { name, startDate, endDate, description, destinations, memberPhones, image } = req.body;
 
     const user = await User.findById(req.userId);
     if (!user) {
@@ -102,6 +102,7 @@ exports.createTrip = async (req, res) => {
     }
 
     const inviteCode = generateInviteCode();
+    const customImage = typeof image === 'string' && image.trim() ? image.trim() : null;
 
     const trip = await Trip.create({
       userId: req.userId,
@@ -110,7 +111,7 @@ exports.createTrip = async (req, res) => {
       endDate,
       description: description || '',
       destinations: destinations || [],
-      image: getTripImage(destinations || []),
+      image: customImage || getTripImage(destinations || []),
       inviteCode,
       members: [
         {

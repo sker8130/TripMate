@@ -132,7 +132,7 @@ const trips = {
   get: (id: string) => get<any>(`/trips/${id}`),
   create: (data: {
     name: string; startDate: string; endDate: string;
-    description: string; destinations: string[]; memberPhones: string[];
+    description: string; destinations: string[]; memberPhones: string[]; image?: string;
   }) => post<any>('/trips', data),
   update: (id: string, data: Partial<any>) => patch<any>(`/trips/${id}`, data),
   delete: (id: string) => del<{ message: string }>(`/trips/${id}`),

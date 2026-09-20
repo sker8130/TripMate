@@ -61,6 +61,7 @@ interface AppContextType {
     description: string;
     destinations: string[];
     memberPhones: string[];
+    image?: string;
   }) => Promise<Trip>;
   deleteTrip: (id: string) => Promise<void>;
   joinTrip: (inviteCode: string) => Promise<Trip | null>;
@@ -73,6 +74,7 @@ interface AppContextType {
       endDate: string;
       description: string;
       destinations: string[];
+      image?: string;
     }>,
   ) => Promise<void>;
   addActivity: (
@@ -572,7 +574,7 @@ const deleteAccount = async (): Promise<boolean> => {
 
   const updateTrip = async (id: string, data: Partial<{
     name: string; startDate: string; endDate: string;
-    description: string; destinations: string[];
+    description: string; destinations: string[]; image?: string;
   }>) => {
     if (!id) {
       logWarn('Trip', 'updateTrip: id is required');
@@ -583,7 +585,7 @@ const deleteAccount = async (): Promise<boolean> => {
       throw new Error('Tên chuyến đi không được trống');
     }
     logAction('Trip', `updateTrip: ${id}`, data);
-    updateLocalTrip(id, t => ({ ...t, ...data }));
+    updateLocalTrip(id, t => ({ ...t, ...data, ...(data.image ? { image: data.image } : {}) }));
     if (isOnline) {
       try {
         await api.trips.update(id, data);
@@ -668,7 +670,7 @@ const deleteAccount = async (): Promise<boolean> => {
 
   const createTrip = async (data: {
     name: string; startDate: string; endDate: string;
-    description: string; destinations: string[]; memberPhones: string[]
+    description: string; destinations: string[]; memberPhones: string[]; image?: string;
   }): Promise<Trip> => {
     if (!data.name?.trim()) {
       logWarn('Trip', 'createTrip: name is required');
@@ -700,7 +702,7 @@ const deleteAccount = async (): Promise<boolean> => {
       id: uid(), ...data,
       memberCount: 1 + data.memberPhones.length,
       status: 'UPCOMING',
-      image: getTripImage(data.destinations),
+      image: data.image || getTripImage(data.destinations),
       members: [
         { id: uid(), name: user?.username || 'Bạn', phone: user?.phone || '', role: 'leader', initials: getInitials(user?.username || 'B') },
         ...data.memberPhones.map(p => ({ id: uid(), name: p, phone: p, role: 'member' as const, initials: p.slice(-2) })),

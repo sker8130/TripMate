@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -546,7 +547,14 @@ function MembersTab({ tripId }: { tripId: string }) {
 /* ──────────────────── EDIT TRIP MODAL ──────────────────── */
 function EditTripModal({ trip, visible, onClose }: { trip: any; visible: boolean; onClose: () => void }) {
   const { updateTrip } = useApp() as any;
-  const [form, setForm] = useState({ name: trip.name, startDate: trip.startDate, endDate: trip.endDate, description: trip.description || '', destinations: trip.destinations || [] as string[] });
+  const [form, setForm] = useState({
+    name: trip.name,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    description: trip.description || '',
+    destinations: trip.destinations || [] as string[],
+    image: trip.image || '',
+  });
   const [destInput, setDestInput] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -557,6 +565,24 @@ function EditTripModal({ trip, visible, onClose }: { trip: any; visible: boolean
     setDestInput('');
   };
   const removeDest = (d: string) => setForm(p => ({ ...p, destinations: p.destinations.filter((x: string) => x !== d) }));
+
+  const pickCoverImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Cần cấp quyền truy cập thư viện ảnh để chọn ảnh bìa cho chuyến đi.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+    setForm(p => ({ ...p, image: result.assets[0].uri }));
+  };
 
   const handleSave = async () => {
     if (!form.name.trim()) { Alert.alert('', 'Tên chuyến đi không được trống'); return; }
@@ -587,6 +613,22 @@ function EditTripModal({ trip, visible, onClose }: { trip: any; visible: boolean
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }}>
+          <View>
+            <Text style={s.editLabel}>Ảnh bìa</Text>
+            <TouchableOpacity style={s.editCoverUpload} onPress={pickCoverImage}>
+              {form.image ? (
+                <Image source={{ uri: form.image }} style={s.editCoverPreview} resizeMode="cover" />
+              ) : (
+                <View style={s.editCoverPlaceholder}>
+                  <View style={s.editCoverIconWrap}>
+                    <Ionicons name="camera" size={20} color="#1B4F8A" />
+                  </View>
+                  <Text style={s.editCoverTitle}>Thêm ảnh bìa</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <Text style={s.editCoverHint}>Hãy update ảnh có tỉ lệ ngang khoảng 16:9.</Text>
+          </View>
           {/* Name */}
           <View>
             <Text style={s.editLabel}>Tên chuyến đi *</Text>
@@ -820,6 +862,12 @@ const s = StyleSheet.create({
   tabTextActive: { color: '#1B4F8A', fontWeight: '700' },
   tabBadge: { position: 'absolute', top: 6, right: 2, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 8 },
   tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  editCoverUpload: { borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 16, overflow: 'hidden', backgroundColor: '#F9FAFB' },
+  editCoverPlaceholder: { height: 180, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F4F7FB', gap: 8 },
+  editCoverIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#E0ECFF', justifyContent: 'center', alignItems: 'center' },
+  editCoverTitle: { fontSize: 15, fontWeight: '700', color: '#1B4F8A' },
+  editCoverHint: { fontSize: 12, color: '#6B7280', marginTop: 8 },
+  editCoverPreview: { width: '100%', height: 180 },
   fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1B4F8A', justifyContent: 'center', alignItems: 'center', shadowColor: '#1B4F8A', shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
   // Plan
   dateBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
