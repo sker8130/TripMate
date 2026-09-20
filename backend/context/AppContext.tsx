@@ -24,7 +24,7 @@ interface AppContextType {
   changePassword: (current: string, newPwd: string) => Promise<boolean>;
   refreshTrips: () => Promise<void>;
   getTrip: (id: string) => Trip | undefined;
-  createTrip: (data: { name: string; startDate: string; endDate: string; description: string; destinations: string[]; memberPhones: string[] }) => Promise<Trip>;
+  createTrip: (data: { name: string; startDate: string; endDate: string; description: string; destinations: string[]; memberPhones: string[]; image?: string }) => Promise<Trip>;
   deleteTrip: (id: string) => Promise<void>;
   addActivity: (tripId: string, data: Omit<Activity, 'id' | 'tripId'>) => Promise<void>;
   updateActivity: (tripId: string, actId: string, data: Partial<Activity>) => Promise<void>;

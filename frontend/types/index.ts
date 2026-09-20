@@ -147,6 +147,7 @@ export interface CreateTripForm {
   description: string;
   destinations: string[];
   memberPhones: string[];
+  image?: string;
 }
 
 export interface CreateActivityForm {
