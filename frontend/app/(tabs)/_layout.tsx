@@ -1,8 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import { Tabs } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -10,7 +18,6 @@ import { useApp } from "../../context/AppContext";
 
 const COLORS = {
   orange: "#F56A16",
-
   white: "#FFFFFF",
 
   text: "#111315",
@@ -21,9 +28,6 @@ const COLORS = {
   danger: "#EF4444",
 };
 
-/*
- * Icon tương ứng từng tab
- */
 const TAB_ICONS: Record<
   string,
   {
@@ -47,9 +51,6 @@ const TAB_ICONS: Record<
   },
 };
 
-/*
- * Badge thông báo
- */
 function NotificationBadge({ count }: { count: number }) {
   if (count <= 0) {
     return null;
@@ -62,72 +63,105 @@ function NotificationBadge({ count }: { count: number }) {
   );
 }
 
-/*
- * CUSTOM BOTTOM TAB BAR
- */
 function AnimatedTabBar({ state, descriptors, navigation }: any) {
   const { unreadCount } = useApp();
 
   const insets = useSafeAreaInsets();
 
-  /*
-   * Chiều rộng thực tế của tab bar.
-   */
-  const [containerWidth, setContainerWidth] = useState(0);
+  const [width, setWidth] = useState(0);
 
   /*
-   * Giá trị index được animate:
-   *
-   * 0 = Chuyến đi
-   * 1 = Thông báo
-   * 2 = Cá nhân
+   * 0 = Trips
+   * 1 = Notifications
+   * 2 = Profile
    */
-  const animatedIndex = useRef(new Animated.Value(state.index)).current;
+  const activeIndex = useRef(new Animated.Value(state.index)).current;
+
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   /*
-   * Mỗi khi đổi tab,
-   * indicator màu cam sẽ spring sang tab mới.
+   * Load âm thanh 1 lần.
    */
   useEffect(() => {
-    Animated.spring(animatedIndex, {
+    let mounted = true;
+
+    const loadSound = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/tab-click.wav"),
+          {
+            volume: 0.12,
+          },
+        );
+
+        if (mounted) {
+          soundRef.current = sound;
+        } else {
+          await sound.unloadAsync();
+        }
+      } catch {
+        /*
+         * Audio lỗi thì navigation
+         * vẫn hoạt động bình thường.
+         */
+      }
+    };
+
+    loadSound();
+
+    return () => {
+      mounted = false;
+
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
+  }, []);
+
+  /*
+   * Animation đơn giản:
+   * không spring / không bounce.
+   */
+  useEffect(() => {
+    Animated.timing(activeIndex, {
       toValue: state.index,
 
-      /*
-       * Tăng tension:
-       * chạy nhanh hơn.
-       *
-       * friction:
-       * kiểm soát độ nảy.
-       */
-      tension: 90,
-      friction: 10,
+      duration: 180,
+
+      easing: Easing.out(Easing.cubic),
 
       useNativeDriver: true,
     }).start();
-  }, [state.index, animatedIndex]);
+  }, [state.index, activeIndex]);
 
-  const numberOfTabs = state.routes.length;
+  const playTabSound = async () => {
+    const sound = soundRef.current;
 
-  const itemWidth = containerWidth > 0 ? containerWidth / numberOfTabs : 0;
+    if (!sound) {
+      return;
+    }
+
+    try {
+      await sound.setPositionAsync(0);
+
+      await sound.playAsync();
+    } catch {
+      // không block navigation
+    }
+  };
+
+  const tabCount = state.routes.length;
+
+  const tabWidth = width > 0 ? width / tabCount : 0;
 
   /*
-   * Kích thước nền màu cam.
+   * Kích thước nền cam
+   * phía sau icon.
    */
-  const indicatorWidth = 42;
+  const indicatorWidth = 40;
 
-  /*
-   * Vị trí X của indicator.
-   *
-   * animatedIndex:
-   *
-   * 0 -> tab 1
-   * 1 -> tab 2
-   * 2 -> tab 3
-   */
   const translateX = Animated.add(
-    Animated.multiply(animatedIndex, itemWidth),
+    Animated.multiply(activeIndex, tabWidth),
 
-    itemWidth > 0 ? (itemWidth - indicatorWidth) / 2 : 0,
+    tabWidth > 0 ? (tabWidth - indicatorWidth) / 2 : 0,
   );
 
   return (
@@ -135,25 +169,25 @@ function AnimatedTabBar({ state, descriptors, navigation }: any) {
       style={[
         styles.tabBarOuter,
         {
-          paddingBottom: Math.max(insets.bottom, 8),
+          paddingBottom: Math.max(insets.bottom, 7),
         },
       ]}
     >
       <View
         style={styles.tabBar}
         onLayout={(event) => {
-          setContainerWidth(event.nativeEvent.layout.width);
+          setWidth(event.nativeEvent.layout.width);
         }}
       >
         {/*
-         * NỀN CAM TRƯỢT
+         * Chỉ có một indicator cam.
+         * Nó chạy từ tab này sang tab khác.
          */}
-        {containerWidth > 0 && (
+        {width > 0 && (
           <Animated.View
             pointerEvents="none"
             style={[
               styles.activeIndicator,
-
               {
                 width: indicatorWidth,
 
@@ -170,24 +204,11 @@ function AnimatedTabBar({ state, descriptors, navigation }: any) {
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
 
-          const isFocused = state.index === index;
+          const focused = state.index === index;
 
           const icon = TAB_ICONS[route.name];
 
-          /*
-           * Animation nhẹ cho icon.
-           */
-          const distance = Animated.subtract(animatedIndex, index);
-
-          const scale = distance.interpolate({
-            inputRange: [-1, 0, 1],
-
-            outputRange: [1, 1.08, 1],
-
-            extrapolate: "clamp",
-          });
-
-          const onPress = () => {
+          const onPress = async () => {
             const event = navigation.emit({
               type: "tabPress",
 
@@ -196,71 +217,45 @@ function AnimatedTabBar({ state, descriptors, navigation }: any) {
               canPreventDefault: true,
             });
 
-            if (!isFocused && !event.defaultPrevented) {
+            /*
+             * Không phát sound nếu
+             * đang đứng đúng tab đó.
+             */
+            if (!focused && !event.defaultPrevented) {
+              playTabSound();
+
               navigation.navigate(route.name, route.params);
             }
-          };
-
-          const onLongPress = () => {
-            navigation.emit({
-              type: "tabLongPress",
-
-              target: route.key,
-            });
           };
 
           return (
             <Pressable
               key={route.key}
-              accessibilityRole="button"
-              accessibilityState={
-                isFocused
-                  ? {
-                      selected: true,
-                    }
-                  : {}
-              }
-              accessibilityLabel={options.tabBarAccessibilityLabel}
-              onPress={onPress}
-              onLongPress={onLongPress}
               style={styles.tabItem}
+              onPress={onPress}
+              onLongPress={() => {
+                navigation.emit({
+                  type: "tabLongPress",
+
+                  target: route.key,
+                });
+              }}
             >
-              {/*
-               * ICON
-               */}
               <View style={styles.iconArea}>
-                <Animated.View
-                  style={{
-                    transform: [
-                      {
-                        scale,
-                      },
-                    ],
-                  }}
-                >
+                <View>
                   <Ionicons
-                    name={
-                      isFocused
-                        ? icon?.active || "ellipse"
-                        : icon?.inactive || "ellipse-outline"
-                    }
+                    name={focused ? icon.active : icon.inactive}
                     size={21}
-                    color={isFocused ? COLORS.white : COLORS.muted}
+                    color={focused ? COLORS.white : COLORS.muted}
                   />
 
                   {route.name === "notifications" && (
                     <NotificationBadge count={unreadCount} />
                   )}
-                </Animated.View>
+                </View>
               </View>
 
-              {/*
-               * LABEL
-               */}
-              <Text
-                style={[styles.tabLabel, isFocused && styles.tabLabelActive]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.label, focused && styles.labelActive]}>
                 {options.title}
               </Text>
             </Pressable>
@@ -304,9 +299,6 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  /*
-   * Phần bao ngoài
-   */
   tabBarOuter: {
     backgroundColor: COLORS.white,
 
@@ -314,36 +306,27 @@ const styles = StyleSheet.create({
 
     borderTopColor: COLORS.border,
 
-    paddingTop: 7,
-
     paddingHorizontal: 10,
+
+    paddingTop: 6,
   },
 
-  /*
-   * Tab bar chính
-   */
   tabBar: {
-    height: 57,
-
     position: "relative",
 
     flexDirection: "row",
 
-    alignItems: "flex-start",
+    height: 57,
   },
 
   /*
-   * MẢNG CAM CHẠY QUA LẠI
-   *
-   * Đây chỉ là một View duy nhất.
-   * Khi state.index thay đổi,
-   * translateX được animate.
+   * Không spring.
+   * Chỉ là ô cam chạy ngang.
    */
   activeIndicator: {
     position: "absolute",
 
     top: 0,
-
     left: 0,
 
     height: 36,
@@ -351,25 +334,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
 
     backgroundColor: COLORS.orange,
-
-    shadowColor: COLORS.orange,
-
-    shadowOpacity: 0.18,
-
-    shadowRadius: 7,
-
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-
-    elevation: 3,
   },
 
-  /*
-   * Mỗi tab chiếm cùng
-   * một phần chiều rộng.
-   */
   tabItem: {
     flex: 1,
 
@@ -380,12 +346,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
 
-  /*
-   * Vùng icon có cùng chiều cao
-   * với indicator.
-   */
   iconArea: {
-    width: 42,
+    width: 40,
 
     height: 36,
 
@@ -394,41 +356,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  tabLabel: {
+  label: {
     marginTop: 4,
 
     fontSize: 10,
-
-    lineHeight: 13,
 
     color: COLORS.muted,
 
     fontWeight: "600",
   },
 
-  tabLabelActive: {
+  labelActive: {
     color: COLORS.text,
 
-    fontWeight: "800",
+    fontWeight: "700",
   },
 
-  /*
-   * Notification badge
-   */
   badge: {
     position: "absolute",
 
-    top: -7,
-
-    right: -10,
+    top: -8,
+    right: -11,
 
     minWidth: 17,
 
     height: 17,
 
-    paddingHorizontal: 3,
-
     borderRadius: 9,
+
+    paddingHorizontal: 3,
 
     backgroundColor: COLORS.danger,
 
