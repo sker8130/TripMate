@@ -21,6 +21,8 @@ import { Trip } from "../../types";
 
 import { computeTripStatus, daysUntil, fmtVND } from "../../utils/helpers";
 
+import TabPageTransition from "../../components/TabPageTransition";
+
 const COLORS = {
   orange: "#F56A16",
   orangeSoft: "#FFF0E5",
@@ -307,196 +309,204 @@ export default function TripsScreen() {
   ] as const;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <FlatList
-        data={filtered}
-        keyExtractor={(trip) => trip.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.orange}
-          />
-        }
-        ListHeaderComponent={
-          <View>
-            {/* HEADER */}
-            <View style={styles.header}>
-              <View style={styles.headerText}>
-                <Text style={styles.greeting}>Xin chào</Text>
+    <TabPageTransition index={0}>
+      <SafeAreaView style={styles.safe}>
+        <FlatList
+          data={filtered}
+          keyExtractor={(trip) => trip.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.orange}
+            />
+          }
+          ListHeaderComponent={
+            <View>
+              {/* HEADER */}
+              <View style={styles.header}>
+                <View style={styles.headerText}>
+                  <Text style={styles.greeting}>Xin chào</Text>
 
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  {user?.username || "TripMate"}
-                </Text>
+                  <Text style={styles.headerTitle} numberOfLines={1}>
+                    {user?.username || "TripMate"}
+                  </Text>
+                </View>
+
+                <View style={styles.headerActions}>
+                  {/* JOIN TRIP */}
+                  <TouchableOpacity
+                    onPress={() => router.push("/trip/join")}
+                    style={styles.circleBtn}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="qr-code-outline"
+                      size={21}
+                      color={COLORS.text}
+                    />
+                  </TouchableOpacity>
+
+                  {/* AVATAR */}
+                  <TouchableOpacity
+                    onPress={() => router.push("/profile/index" as any)}
+                    style={styles.userAvatar}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.userAvatarText}>
+                      {user?.username?.[0]?.toUpperCase() || "U"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              <View style={styles.headerActions}>
-                {/* JOIN TRIP */}
-                <TouchableOpacity
-                  onPress={() => router.push("/trip/join")}
-                  style={styles.circleBtn}
-                  activeOpacity={0.8}
-                >
+              {/* SEARCH */}
+              <View style={styles.searchRow}>
+                <View style={styles.searchBar}>
                   <Ionicons
-                    name="qr-code-outline"
+                    name="search-outline"
+                    size={20}
+                    color={COLORS.text}
+                  />
+
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Tìm chuyến đi, điểm đến..."
+                    placeholderTextColor={COLORS.lightText}
+                    value={search}
+                    onChangeText={setSearch}
+                  />
+
+                  {search.length > 0 ? (
+                    <TouchableOpacity onPress={() => setSearch("")}>
+                      <Ionicons
+                        name="close-circle"
+                        size={18}
+                        color={COLORS.lightText}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                <View style={styles.filterIconBtn}>
+                  <Ionicons
+                    name="options-outline"
                     size={21}
                     color={COLORS.text}
                   />
-                </TouchableOpacity>
-
-                {/* AVATAR */}
-                <TouchableOpacity
-                  onPress={() => router.push("/profile/index" as any)}
-                  style={styles.userAvatar}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.userAvatarText}>
-                    {user?.username?.[0]?.toUpperCase() || "U"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* SEARCH */}
-            <View style={styles.searchRow}>
-              <View style={styles.searchBar}>
-                <Ionicons name="search-outline" size={20} color={COLORS.text} />
-
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Tìm chuyến đi, điểm đến..."
-                  placeholderTextColor={COLORS.lightText}
-                  value={search}
-                  onChangeText={setSearch}
-                />
-
-                {search.length > 0 ? (
-                  <TouchableOpacity onPress={() => setSearch("")}>
-                    <Ionicons
-                      name="close-circle"
-                      size={18}
-                      color={COLORS.lightText}
-                    />
-                  </TouchableOpacity>
-                ) : null}
+                </View>
               </View>
 
-              <View style={styles.filterIconBtn}>
-                <Ionicons
-                  name="options-outline"
-                  size={21}
-                  color={COLORS.text}
-                />
-              </View>
-            </View>
+              {/* FILTERS */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterContent}
+              >
+                {filters.map((item) => {
+                  const active = filter === item.key;
 
-            {/* FILTERS */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterContent}
-            >
-              {filters.map((item) => {
-                const active = filter === item.key;
-
-                return (
-                  <TouchableOpacity
-                    key={item.key}
-                    style={[
-                      styles.filterChip,
-
-                      active && styles.filterChipActive,
-                    ]}
-                    onPress={() => setFilter(item.key)}
-                    activeOpacity={0.8}
-                  >
-                    <Text
+                  return (
+                    <TouchableOpacity
+                      key={item.key}
                       style={[
-                        styles.filterText,
+                        styles.filterChip,
 
-                        active && styles.filterTextActive,
+                        active && styles.filterChipActive,
                       ]}
+                      onPress={() => setFilter(item.key)}
+                      activeOpacity={0.8}
                     >
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+                      <Text
+                        style={[
+                          styles.filterText,
 
-            {/* OFFLINE */}
-            {!isOnline ? (
-              <View style={styles.offlineBanner}>
-                <Ionicons
-                  name="cloud-offline-outline"
-                  size={15}
-                  color={COLORS.yellow}
-                />
+                          active && styles.filterTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
 
-                <Text style={styles.offlineText}>
-                  Đang xem dữ liệu ngoại tuyến · Kết nối internet để đồng bộ
+              {/* OFFLINE */}
+              {!isOnline ? (
+                <View style={styles.offlineBanner}>
+                  <Ionicons
+                    name="cloud-offline-outline"
+                    size={15}
+                    color={COLORS.yellow}
+                  />
+
+                  <Text style={styles.offlineText}>
+                    Đang xem dữ liệu ngoại tuyến · Kết nối internet để đồng bộ
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* TITLE */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Chuyến đi của tôi</Text>
+
+                <Text style={styles.tripCount}>
+                  {filtered.length} chuyến đi
                 </Text>
               </View>
-            ) : null}
-
-            {/* TITLE */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Chuyến đi của tôi</Text>
-
-              <Text style={styles.tripCount}>{filtered.length} chuyến đi</Text>
             </View>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TripCard
-            trip={item}
-            onPress={() => router.push(`/trip/${item.id}`)}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Ionicons
-                name="airplane-outline"
-                size={42}
-                color={COLORS.orange}
-              />
+          }
+          renderItem={({ item }) => (
+            <TripCard
+              trip={item}
+              onPress={() => router.push(`/trip/${item.id}`)}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <Ionicons
+                  name="airplane-outline"
+                  size={42}
+                  color={COLORS.orange}
+                />
+              </View>
+
+              <Text style={styles.emptyTitle}>
+                {search ? "Không tìm thấy chuyến đi" : "Chưa có chuyến đi nào"}
+              </Text>
+
+              <Text style={styles.emptySub}>
+                {search
+                  ? "Thử tìm kiếm bằng một từ khóa khác."
+                  : "Tạo chuyến đi đầu tiên để bắt đầu lên kế hoạch."}
+              </Text>
+
+              {!search ? (
+                <TouchableOpacity
+                  style={styles.emptyCreateBtn}
+                  onPress={() => router.push("/trip/create")}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.emptyCreateText}>Tạo chuyến đi</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
+          }
+        />
 
-            <Text style={styles.emptyTitle}>
-              {search ? "Không tìm thấy chuyến đi" : "Chưa có chuyến đi nào"}
-            </Text>
-
-            <Text style={styles.emptySub}>
-              {search
-                ? "Thử tìm kiếm bằng một từ khóa khác."
-                : "Tạo chuyến đi đầu tiên để bắt đầu lên kế hoạch."}
-            </Text>
-
-            {!search ? (
-              <TouchableOpacity
-                style={styles.emptyCreateBtn}
-                onPress={() => router.push("/trip/create")}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.emptyCreateText}>Tạo chuyến đi</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        }
-      />
-
-      {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push("/trip/create")}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={30} color={COLORS.white} />
-      </TouchableOpacity>
-    </SafeAreaView>
+        {/* FAB */}
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push("/trip/create")}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={30} color={COLORS.white} />
+        </TouchableOpacity>
+      </SafeAreaView>
+    </TabPageTransition>
   );
 }
 

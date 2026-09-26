@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
+import TabPageTransition from "../../components/TabPageTransition";
 
 function useConfirm() {
   const [visible, setVisible] = useState(false);
@@ -95,40 +96,61 @@ export default function ProfileTab() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/settings')}>
-          <Ionicons name="settings-outline" size={22} color="#6B7280" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Cá nhân</Text>
-        <View style={{ width: 44 }} />
-      </View>
-      <View style={styles.avatarArea}>
-        <View style={styles.avatarBig}>
-          <Text style={styles.avatarBigText}>
-            {user?.username ? user.username[0].toUpperCase() : 'U'}
-          </Text>
+    <TabPageTransition index={2}>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.push("/settings")}
+          >
+            <Ionicons name="settings-outline" size={22} color="#6B7280" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Cá nhân</Text>
+          <View style={{ width: 44 }} />
         </View>
-        <Text style={styles.nameText}>{user?.username || 'Người dùng'}</Text>
-        <Text style={styles.emailText}>{user?.email || ''}</Text>
-      </View>
-      <View style={styles.card}>
-        <MenuItem icon="person-outline"   label="Thông tin cá nhân"           onPress={() => router.push('/profile/setup'   as any)} />
-        <View style={styles.divider} />
-        <MenuItem icon="qr-code-outline"  label="QR & Số tài khoản ngân hàng" onPress={() => router.push('/profile/qr'      as any)} />
-        <View style={styles.divider} />
-        <MenuItem icon="time-outline"     label="Lịch sử chuyến đi"           onPress={() => router.push('/profile/history' as any)} />
-        <View style={styles.divider} />
-        <MenuItem icon="settings-outline" label="Cài đặt"                     onPress={() => router.push('/settings'  as any)} />
-        <View style={styles.divider} />
-        <MenuItem
-          icon={signingOut ? 'reload-outline' : 'log-out-outline'}
-          label={signingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
-          onPress={signingOut ? () => {} : handleSignOut}
-          danger
-        />
-      </View>
-    </SafeAreaView>
+        <View style={styles.avatarArea}>
+          <View style={styles.avatarBig}>
+            <Text style={styles.avatarBigText}>
+              {user?.username ? user.username[0].toUpperCase() : "U"}
+            </Text>
+          </View>
+          <Text style={styles.nameText}>{user?.username || "Người dùng"}</Text>
+          <Text style={styles.emailText}>{user?.email || ""}</Text>
+        </View>
+        <View style={styles.card}>
+          <MenuItem
+            icon="person-outline"
+            label="Thông tin cá nhân"
+            onPress={() => router.push("/profile/setup" as any)}
+          />
+          <View style={styles.divider} />
+          <MenuItem
+            icon="qr-code-outline"
+            label="QR & Số tài khoản ngân hàng"
+            onPress={() => router.push("/profile/qr" as any)}
+          />
+          <View style={styles.divider} />
+          <MenuItem
+            icon="time-outline"
+            label="Lịch sử chuyến đi"
+            onPress={() => router.push("/profile/history" as any)}
+          />
+          <View style={styles.divider} />
+          <MenuItem
+            icon="settings-outline"
+            label="Cài đặt"
+            onPress={() => router.push("/settings" as any)}
+          />
+          <View style={styles.divider} />
+          <MenuItem
+            icon={signingOut ? "reload-outline" : "log-out-outline"}
+            label={signingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+            onPress={signingOut ? () => {} : handleSignOut}
+            danger
+          />
+        </View>
+      </SafeAreaView>
+    </TabPageTransition>
   );
 }
 

@@ -8,6 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import type { Notif } from "../../context/AppContext";
+import TabPageTransition from "../../components/TabPageTransition";
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -35,63 +36,65 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
-        <Text style={s.title}>Thông báo</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllNotificationsRead} style={s.markAllBtn}>
-            <Text style={s.markAllText}>Đọc tất cả</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {unreadCount > 0 && (
-        <View style={s.unreadBar}>
-          <View style={s.unreadDot} />
-          <Text style={s.unreadText}>{unreadCount} thông báo chưa đọc</Text>
-        </View>
-      )}
-
-      <FlatList
-        data={notifications}
-        keyExtractor={n => n.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.list}
-        ItemSeparatorComponent={() => <View style={s.sep} />}
-        renderItem={({ item }) => {
-          const isRead = readIds.has(item.id);
-          return (
-            <TouchableOpacity
-              style={[s.card, !isRead && s.cardUnread]}
-              onPress={() => handlePress(item)}
-              activeOpacity={0.75}
-            >
-              <View style={[s.iconWrap, { backgroundColor: item.iconBg }]}>
-                <Ionicons name={item.icon} size={22} color={item.iconColor} />
-              </View>
-              <View style={s.cardBody}>
-                <View style={s.cardTop}>
-                  <Text style={[s.cardTitle, !isRead && s.cardTitleUnread]} numberOfLines={1}>{item.title}</Text>
-                  {!isRead && <View style={s.unreadPip} />}
-                </View>
-                <Text style={s.cardDesc} numberOfLines={2}>{item.body}</Text>
-                <Text style={s.cardTime}>{item.time}</Text>
-              </View>
-              {item.tripId ? (
-                <Ionicons name="chevron-forward" size={14} color="#D1D5DB" />
-              ) : null}
+    <TabPageTransition index={1}>
+      <SafeAreaView style={s.safe}>
+        <View style={s.header}>
+          <Text style={s.title}>Thông báo</Text>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={markAllNotificationsRead} style={s.markAllBtn}>
+              <Text style={s.markAllText}>Đọc tất cả</Text>
             </TouchableOpacity>
-          );
-        }}
-        ListEmptyComponent={
-          <View style={s.emptyWrap}>
-            <View style={s.emptyIcon}><Ionicons name="notifications-off-outline" size={40} color="#9CA3AF" /></View>
-            <Text style={s.emptyTitle}>Không có thông báo</Text>
-            <Text style={s.emptySub}>Thông báo sẽ xuất hiện khi có chuyến đi</Text>
+          )}
+        </View>
+
+        {unreadCount > 0 && (
+          <View style={s.unreadBar}>
+            <View style={s.unreadDot} />
+            <Text style={s.unreadText}>{unreadCount} thông báo chưa đọc</Text>
           </View>
-        }
-      />
-    </SafeAreaView>
+        )}
+
+        <FlatList
+          data={notifications}
+          keyExtractor={n => n.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.list}
+          ItemSeparatorComponent={() => <View style={s.sep} />}
+          renderItem={({ item }) => {
+            const isRead = readIds.has(item.id);
+            return (
+              <TouchableOpacity
+                style={[s.card, !isRead && s.cardUnread]}
+                onPress={() => handlePress(item)}
+                activeOpacity={0.75}
+              >
+                <View style={[s.iconWrap, { backgroundColor: item.iconBg }]}>
+                  <Ionicons name={item.icon} size={22} color={item.iconColor} />
+                </View>
+                <View style={s.cardBody}>
+                  <View style={s.cardTop}>
+                    <Text style={[s.cardTitle, !isRead && s.cardTitleUnread]} numberOfLines={1}>{item.title}</Text>
+                    {!isRead && <View style={s.unreadPip} />}
+                  </View>
+                  <Text style={s.cardDesc} numberOfLines={2}>{item.body}</Text>
+                  <Text style={s.cardTime}>{item.time}</Text>
+                </View>
+                {item.tripId ? (
+                  <Ionicons name="chevron-forward" size={14} color="#D1D5DB" />
+                ) : null}
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={s.emptyWrap}>
+              <View style={s.emptyIcon}><Ionicons name="notifications-off-outline" size={40} color="#9CA3AF" /></View>
+              <Text style={s.emptyTitle}>Không có thông báo</Text>
+              <Text style={s.emptySub}>Thông báo sẽ xuất hiện khi có chuyến đi</Text>
+            </View>
+          }
+        />
+      </SafeAreaView>
+    </TabPageTransition>
   );
 }
 
